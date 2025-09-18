@@ -11,30 +11,37 @@ if not os.path.exists('artifacts'):
     os.makedirs('artifacts')
 
 # --------------------------
-# Download .pkl files from Google Drive if not present
+# Google Drive file URLs
 # --------------------------
+MOVIE_LIST_URL = "https://drive.google.com/uc?id=1akk92wYyZ6tZQ8hiVR9jLdvZAfD4E_ki"
+SIMILARITY_URL = "https://drive.google.com/uc?id=1Rz0a658fUb5OWPi73CSO_qmK3EWyGlLo"
+
 movie_list_path = 'artifacts/movie_list.pkl'
 similarity_path = 'artifacts/similarity.pkl'
 
-if not os.path.exists(movie_list_path):
-    gdown.download(
-        'https://drive.google.com/uc?id=1akk92wYyZ6tZQ8hiVR9jLdvZAfD4E_ki',
-        movie_list_path,
-        quiet=False
-    )
+# --------------------------
+# Download files if not present
+# --------------------------
+def download_file(url, output_path):
+    if not os.path.exists(output_path):
+        st.info(f"Downloading {os.path.basename(output_path)} from Google Drive...")
+        gdown.download(url, output_path, quiet=False, fuzzy=True)
+        st.success(f"Downloaded {os.path.basename(output_path)} successfully!")
 
-if not os.path.exists(similarity_path):
-    gdown.download(
-        'https://drive.google.com/uc?id=1Rz0a658fUb5OWPi73CSO_qmK3EWyGlLo',
-        similarity_path,
-        quiet=False
-    )
+download_file(MOVIE_LIST_URL, movie_list_path)
+download_file(SIMILARITY_URL, similarity_path)
 
 # --------------------------
-# Load data
+# Load pickle data safely
 # --------------------------
-movies = pickle.load(open(movie_list_path, 'rb'))
-similarity = pickle.load(open(similarity_path, 'rb'))
+try:
+    with open(movie_list_path, 'rb') as f:
+        movies = pickle.load(f)
+    with open(similarity_path, 'rb') as f:
+        similarity = pickle.load(f)
+except Exception as e:
+    st.error(f"Error loading pickle files: {e}")
+    st.stop()
 
 movie_list = movies['title'].values
 
@@ -43,11 +50,13 @@ movie_list = movies['title'].values
 # --------------------------
 def fetch_poster(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=7b51d8779610dadaca77fad2e3781e4d&language=en-US"
-    data = requests.get(url).json()
-    poster_path = data.get('poster_path')
-    if poster_path:
-        full_path = "http://image.tmdb.org/t/p/w500" + poster_path
-        return full_path
+    try:
+        data = requests.get(url).json()
+        poster_path = data.get('poster_path')
+        if poster_path:
+            return "http://image.tmdb.org/t/p/w500" + poster_path
+    except:
+        return None
     return None
 
 def recommend(movie):
@@ -59,9 +68,8 @@ def recommend(movie):
     
     for i in distances[1:6]:
         movie_id = movies.iloc[i[0]].movie_id
-        poster = fetch_poster(movie_id)
-        recommended_movies_poster.append(poster)
         recommended_movies_name.append(movies.iloc[i[0]].title)
+        recommended_movies_poster.append(fetch_poster(movie_id))
     
     return recommended_movies_name, recommended_movies_poster
 
@@ -85,10 +93,4 @@ if st.button('Show recommendation'):
             col.image(recommended_movies_poster[idx])
         else:
             col.text("Poster not available")
-
-
-    with col5:
-        st.text(recommended_movies_name[4])
-        st.image(recommended_movies_poster[4])
-
 
