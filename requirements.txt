@@ -2,7 +2,7 @@ streamlit
 numpy
 pandas
 matplotlib
-ast
-scikitlearn
+scikit-learn
 pickle
 requests
+rich
