@@ -1,6 +1,51 @@
-import pickle
 import streamlit as st
+import pickle
+import os
 import requests
+
+# Function to download file from Google Drive
+def download_file_from_google_drive(file_id, destination):
+    URL = "https://drive.google.com/uc?export=download"
+
+    session = requests.Session()
+    response = session.get(URL, params={'id': file_id}, stream=True)
+    token = None
+
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            token = value
+
+    if token:
+        params = {'id': file_id, 'confirm': token}
+        response = session.get(URL, params=params, stream=True)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(32768):
+            if chunk:
+                f.write(chunk)
+
+# Paths for local files
+os.makedirs("artifacts", exist_ok=True)
+movie_list_path = "artifacts/movie_list.pkl"
+similarity_path = "artifacts/similarity.pkl"
+
+# Download files if they don't exist
+if not os.path.exists(movie_list_path):
+    download_file_from_google_drive("1akk92wYyZ6tZQ8hiVR9jLdvZAfD4E_ki", movie_list_path)
+
+if not os.path.exists(similarity_path):
+    download_file_from_google_drive("1Rz0a658fUb5OWPi73CSO_qmK3EWyGlLo", similarity_path)
+
+# Load files
+movies = pickle.load(open(movie_list_path, 'rb'))
+similarity = pickle.load(open(similarity_path, 'rb'))
+
+movie_list = movies['title'].values
+
+st.header("Movies Recommendation System Using Machine Learning")
+
+
+
 
 
 def fetch_poster(movie_id):
@@ -57,3 +102,4 @@ if st.button('Show recommendation'):
     with col5:
         st.text(recommended_movies_name[4])
         st.image(recommended_movies_poster[4])
+
