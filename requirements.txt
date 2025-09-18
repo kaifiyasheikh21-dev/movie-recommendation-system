@@ -1,4 +1,5 @@
 streamlit
-
-#local packages
--e .
+numpy
+pandas
+matplotlib
+ast
